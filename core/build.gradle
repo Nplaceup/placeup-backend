@@ -1,0 +1,44 @@
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    api platform('org.springframework.boot:spring-boot-dependencies:3.4.10')
+    api 'com.querydsl:querydsl-jpa:5.0.0:jakarta'
+    api 'com.vladmihalcea:hibernate-types-60:2.21.1'
+
+    compileOnly platform('org.springframework.boot:spring-boot-dependencies:3.4.10')
+    compileOnly 'org.springframework.data:spring-data-jpa'
+    compileOnly 'org.hibernate.orm:hibernate-core'
+    compileOnly 'jakarta.persistence:jakarta.persistence-api'
+    compileOnly 'jakarta.validation:jakarta.validation-api'
+    compileOnly 'org.projectlombok:lombok'
+
+    annotationProcessor platform('org.springframework.boot:spring-boot-dependencies:3.4.10')
+    annotationProcessor 'com.querydsl:querydsl-apt:5.0.0:jakarta'
+    annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
+    annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+def generated = file('src/main/generated')
+
+sourceSets {
+    main.java.srcDir generated
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.generatedSourceOutputDirectory = generated
+}
+
+clean {
+    delete generated
+}

@@ -1,0 +1,9 @@
+.git
+.gradle
+build
+**/build
+**/out
+**/.idea
+**/.DS_Store
+**/*.log
+**/src/main/generated

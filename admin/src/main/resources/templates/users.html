@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/layout :: layout(~{::content})}">
+
+<div th:fragment="content">
+    <h2>사용자 관리 - 사용자 조회</h2>
+
+    <!-- 1) 필터 영역 -->
+    <form th:action="@{/admin/users}" method="get"
+          style="margin: 12px 0; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        <!-- 페이징/정렬 유지 (필터 적용 시 page는 0으로 reset 하는 게 일반적이라 hidden page는 생략) -->
+        <input type="hidden" name="size" th:value="${size}"/>
+        <input type="hidden" name="sort" th:value="${sort}"/>
+        <input type="hidden" name="dir" th:value="${dir}"/>
+
+        <input type="text" name="email" placeholder="email contains" th:value="${email}"
+               style="width:220px; padding:6px;"/>
+
+        <select name="role" style="padding:6px;">
+            <option value="" th:selected="${role == null}">ROLE 전체</option>
+            <option th:each="r : ${roles}" th:value="${r}" th:text="${r}"
+                    th:selected="${role != null and role == r}"></option>
+        </select>
+
+        <select name="plan" style="padding:6px;">
+            <option value="" th:selected="${plan == null}">PLAN 전체</option>
+            <option th:each="p : ${plans}" th:value="${p}" th:text="${p}"
+                    th:selected="${plan != null and plan == p}"></option>
+        </select>
+
+        <select name="status" style="padding:6px;">
+            <option value="" th:selected="${status == null}">STATUS 전체</option>
+            <option th:each="s : ${statuses}" th:value="${s}" th:text="${s}"
+                    th:selected="${status != null and status == s}"></option>
+        </select>
+
+        <button type="submit" style="padding:6px 12px;">필터 적용</button>
+
+        <!-- 초기화 시 size/sort/dir은 유지 -->
+        <a th:href="@{/admin/users(size=${size}, sort=${sort}, dir=${dir})}"
+           style="padding:6px 12px; border:1px solid #ccc; text-decoration:none;">
+            초기화
+        </a>
+    </form>
+
+    <!-- 2) 카운트 영역 -->
+    <div style="margin: 14px 0; padding: 10px; border: 1px solid #ddd;">
+        <div style="margin-bottom:8px;">
+            <b>전체 사용자:</b> <span th:text="${counts.total}">0</span>
+        </div>
+        <div style="margin-bottom:8px;">
+            <b>Role별:</b>
+            <span th:each="e : ${counts.roleCounts}" style="margin-right:10px;">
+        <span th:text="${e.key}">USER</span>: <span th:text="${e.value}">0</span>
+      </span>
+        </div>
+        <div style="margin-bottom:8px;">
+            <b>Plan별:</b>
+            <span th:each="e : ${counts.planCounts}" style="margin-right:10px;">
+        <span th:text="${e.key}">FREE</span>: <span th:text="${e.value}">0</span>
+      </span>
+        </div>
+        <div>
+            <b>Status별:</b>
+            <span th:each="e : ${counts.statusCounts}" style="margin-right:10px;">
+        <span th:text="${e.key}">ACTIVE</span>: <span th:text="${e.value}">0</span>
+      </span>
+        </div>
+    </div>
+
+    <!-- 정렬 표시용: ▲▼ -->
+    <style>
+        .sortable a { color: inherit; text-decoration: none; }
+        .sortable a:hover { text-decoration: underline; }
+        .sort-ind { margin-left: 4px; font-size: 12px; }
+    </style>
+
+    <!-- 3) 사용자 테이블 -->
+    <table border="1" cellpadding="8" style="width:100%; border-collapse:collapse;">
+        <thead>
+        <tr style="background:#f6f6f6;">
+            <!-- ID -->
+            <th class="sortable" style="width:70px;">
+                <a th:href="@{/admin/users(
+            page=0,
+            size=${size},
+            sort='id',
+            dir=${sort == 'id' and dir == 'ASC' ? 'DESC' : 'ASC'},
+            email=${email},
+            role=${role},
+            plan=${plan},
+            status=${status}
+        )}">
+                    ID
+                    <span class="sort-ind"
+                          th:if="${sort == 'id'}"
+                          th:text="${dir == 'ASC' ? '▲' : '▼'}">▲</span>
+                </a>
+            </th>
+
+            <!-- Email -->
+            <th class="sortable">
+                <a th:href="@{/admin/users(
+            page=0,
+            size=${size},
+            sort='email',
+            dir=${sort == 'email' and dir == 'ASC' ? 'DESC' : 'ASC'},
+            email=${email},
+            role=${role},
+            plan=${plan},
+            status=${status}
+        )}">
+                    Email
+                    <span class="sort-ind"
+                          th:if="${sort == 'email'}"
+                          th:text="${dir == 'ASC' ? '▲' : '▼'}">▲</span>
+                </a>
+            </th>
+
+            <!-- Role -->
+            <th class="sortable" style="width:120px;">
+                <a th:href="@{/admin/users(
+            page=0,
+            size=${size},
+            sort='role',
+            dir=${sort == 'role' and dir == 'ASC' ? 'DESC' : 'ASC'},
+            email=${email},
+            role=${role},
+            plan=${plan},
+            status=${status}
+        )}">
+                    Role
+                    <span class="sort-ind"
+                          th:if="${sort == 'role'}"
+                          th:text="${dir == 'ASC' ? '▲' : '▼'}">▲</span>
+                </a>
+            </th>
+
+            <!-- Plan(currentPlan) -->
+            <th class="sortable" style="width:140px;">
+                <a th:href="@{/admin/users(
+            page=0,
+            size=${size},
+            sort='currentPlan',
+            dir=${sort == 'currentPlan' and dir == 'ASC' ? 'DESC' : 'ASC'},
+            email=${email},
+            role=${role},
+            plan=${plan},
+            status=${status}
+        )}">
+                    Plan
+                    <span class="sort-ind"
+                          th:if="${sort == 'currentPlan'}"
+                          th:text="${dir == 'ASC' ? '▲' : '▼'}">▲</span>
+                </a>
+            </th>
+
+            <!-- Cash -->
+            <th class="sortable" style="width:110px;">
+                <a th:href="@{/admin/users(
+            page=0,
+            size=${size},
+            sort='cash',
+            dir=${sort == 'cash' and dir == 'ASC' ? 'DESC' : 'ASC'},
+            email=${email},
+            role=${role},
+            plan=${plan},
+            status=${status}
+        )}">
+                    Cash
+                    <span class="sort-ind"
+                          th:if="${sort == 'cash'}"
+                          th:text="${dir == 'ASC' ? '▲' : '▼'}">▲</span>
+                </a>
+            </th>
+
+            <!-- Status(isActive) -->
+            <th class="sortable" style="width:140px;">
+                <a th:href="@{/admin/users(
+            page=0,
+            size=${size},
+            sort='isActive',
+            dir=${sort == 'isActive' and dir == 'ASC' ? 'DESC' : 'ASC'},
+            email=${email},
+            role=${role},
+            plan=${plan},
+            status=${status}
+        )}">
+                    Status
+                    <span class="sort-ind"
+                          th:if="${sort == 'isActive'}"
+                          th:text="${dir == 'ASC' ? '▲' : '▼'}">▲</span>
+                </a>
+            </th>
+
+            <!-- CreatedAt -->
+            <th class="sortable" style="width:180px;">
+                <a th:href="@{/admin/users(
+            page=0,
+            size=${size},
+            sort='createdAt',
+            dir=${sort == 'createdAt' and dir == 'ASC' ? 'DESC' : 'ASC'},
+            email=${email},
+            role=${role},
+            plan=${plan},
+            status=${status}
+        )}">
+                    CreatedAt
+                    <span class="sort-ind"
+                          th:if="${sort == 'createdAt'}"
+                          th:text="${dir == 'ASC' ? '▲' : '▼'}">▲</span>
+                </a>
+            </th>
+
+            <!-- UpdatedAt -->
+            <th class="sortable" style="width:180px;">
+                <a th:href="@{/admin/users(
+            page=0,
+            size=${size},
+            sort='updatedAt',
+            dir=${sort == 'updatedAt' and dir == 'ASC' ? 'DESC' : 'ASC'},
+            email=${email},
+            role=${role},
+            plan=${plan},
+            status=${status}
+        )}">
+                    UpdatedAt
+                    <span class="sort-ind"
+                          th:if="${sort == 'updatedAt'}"
+                          th:text="${dir == 'ASC' ? '▲' : '▼'}">▲</span>
+                </a>
+            </th>
+
+            <th style="width:220px;">Action</th>
+        </tr>
+        </thead>
+
+        <tbody>
+        <tr th:each="u : ${users}">
+            <td th:text="${u.id}">1</td>
+            <td th:text="${u.email}">a@test.com</td>
+            <td th:text="${u.role}">USER</td>
+            <td th:text="${u.currentPlan}">FREE</td>
+            <td th:text="${u.cash}">0</td>
+            <td th:text="${u.isActive}">ACTIVE</td>
+            <td th:text="${u.createdAt != null ? #temporals.format(u.createdAt, 'yyyy-MM-dd HH:mm:ss') : '-'}">-</td>
+            <td th:text="${u.updatedAt != null ? #temporals.format(u.updatedAt, 'yyyy-MM-dd HH:mm:ss') : '-'}">-</td>
+
+            <td style="display:flex; gap:10px; align-items:center;">
+                <!-- 수정 페이지 이동 -->
+                <a th:href="@{/admin/users/{id}/edit(id=${u.id})}"
+                   style="padding:6px 10px; border:1px solid #ccc; text-decoration:none;">
+                    수정&상세보기
+                </a>
+
+                <!-- 활성/비활성 토글 -->
+                <form th:action="@{/admin/users/{id}/status(id=${u.id})}" method="post" style="margin:0;">
+                    <input type="hidden" th:if="${_csrf != null}"
+                           th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+                    <!-- ACTIVE면 INACTIVE로, INACTIVE면 ACTIVE로 -->
+                    <input type="hidden" name="isActive"
+                           th:value="${u.isActive != null and u.isActive.name() == 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'}"/>
+
+                    <button type="submit"
+                            class="js-confirm"
+                            th:attr="data-confirm=${u.isActive != null and u.isActive.name() == 'ACTIVE'
+                           ? '비활성화 하시겠습니까?'
+                           : '활성화 하시겠습니까?'}"
+                            th:text="${u.isActive != null and u.isActive.name() == 'ACTIVE' ? '비활성화' : '활성화'}"
+                            style="padding:6px 10px;">
+                        비활성화
+                    </button>
+                </form>
+            </td>
+        </tr>
+
+        <tr th:if="${users == null or #lists.isEmpty(users)}">
+            <td colspan="9" style="text-align:center; padding:16px;">조회된 사용자가 없습니다.</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <!-- 4) 페이지네이션 (이전/다음 + size 변경) -->
+    <div style="margin-top: 14px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+
+        <!-- 이전 -->
+        <a th:if="${usersPage != null and usersPage.hasPrevious()}"
+           th:href="@{/admin/users(
+          page=${usersPage.number - 1},
+          size=${size},
+          sort=${sort},
+          dir=${dir},
+          email=${email},
+          role=${role},
+          plan=${plan},
+          status=${status
+       })}"
+           style="padding:6px 10px; border:1px solid #ccc; text-decoration:none;">
+            이전
+        </a>
+
+        <span>
+      <b th:text="${usersPage != null ? usersPage.number + 1 : 1}">1</b>
+      /
+      <span th:text="${usersPage != null ? usersPage.totalPages : 1}">1</span>
+      (총 <span th:text="${usersPage != null ? usersPage.totalElements : 0}">0</span>건)
+    </span>
+
+        <!-- 다음 -->
+        <a th:if="${usersPage != null and usersPage.hasNext()}"
+           th:href="@{/admin/users(
+          page=${usersPage.number + 1},
+          size=${size},
+          sort=${sort},
+          dir=${dir},
+          email=${email},
+          role=${role},
+          plan=${plan},
+          status=${status
+       })}"
+           style="padding:6px 10px; border:1px solid #ccc; text-decoration:none;">
+            다음
+        </a>
+
+        <!-- 페이지 크기 변경 (page=0으로 리셋) -->
+        <form th:action="@{/admin/users}" method="get" style="display:flex; gap:6px; align-items:center; margin-left:8px;">
+            <input type="hidden" name="page" value="0"/>
+            <input type="hidden" name="sort" th:value="${sort}"/>
+            <input type="hidden" name="dir" th:value="${dir}"/>
+            <input type="hidden" name="email" th:value="${email}"/>
+            <input type="hidden" name="role" th:value="${role}"/>
+            <input type="hidden" name="plan" th:value="${plan}"/>
+            <input type="hidden" name="status" th:value="${status}"/>
+
+            <label>페이지 크기</label>
+            <select name="size" style="padding:6px;">
+                <option value="10" th:selected="${size == 10}">10</option>
+                <option value="20" th:selected="${size == 20}">20</option>
+                <option value="50" th:selected="${size == 50}">50</option>
+                <option value="100" th:selected="${size == 100}">100</option>
+            </select>
+            <button type="submit" style="padding:6px 10px;">적용</button>
+        </form>
+
+    </div>
+
+    <!-- confirm 처리: 버튼에 data-confirm 붙이고 JS로 confirm -->
+    <script>
+        document.addEventListener('click', function (e) {
+            const btn = e.target.closest('.js-confirm');
+            if (!btn) return;
+            const msg = btn.getAttribute('data-confirm') || '진행할까요?';
+            if (!confirm(msg)) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        });
+    </script>
+</div>
+</html>

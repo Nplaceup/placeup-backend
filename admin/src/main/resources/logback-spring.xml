@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <springProperty name="APP_NAME" source="spring.application.name" />
+    <property name="DEFAULT_LOG_PATH" value="${user.dir}/../logs" />
+    <property name="LOG_PATH" value="${APP_LOG_PATH:-${DEFAULT_LOG_PATH}}" />
+    <property name="DIR_PATH" value="${LOG_PATH}/${APP_NAME}"/>
+    <property name="CONSOLE_LOG_PATTERN"
+              value="[%d{HH:mm:ss.SSSXXX}] [%level] [%thread] [%logger{36}] - %msg%n"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${DIR_PATH}/default.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${DIR_PATH}/%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>90</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <root level="info">
+        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="FILE" />
+    </root>
+</configuration>

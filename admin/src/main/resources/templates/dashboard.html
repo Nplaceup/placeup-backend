@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="layout/layout :: layout(~{::content})">
+
+<div th:fragment="content">
+
+    <h2>Dashboard</h2>
+
+    <p>관리자 페이지입니다.</p>
+
+    <div>
+        <ul>
+            <li>총 사용자 수: --</li>
+            <li>오늘 가입자: --</li>
+            <li>오늘 결제 건수: --</li>
+        </ul>
+    </div>
+
+</div>
+</html>

@@ -1,0 +1,47 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:localhost}
+      port: ${SPRING_REDIS_PORT:6379}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
+
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:guest}
+    password: ${SPRING_RABBITMQ_PASSWORD:guest}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
+client:
+  origin: ${CLIENT_ORIGIN:http://localhost:5173}
+
+url:
+  callback:
+    rankings: ${URL_CALLBACK_RANKINGS:http://localhost:8080/v1/callback/rankings}
+    places: ${URL_CALLBACK_PLACES:http://localhost:8080/v1/callback/places}
+    keywords: ${URL_CALLBACK_KEYWORDS:http://localhost:8080/v1/callback/keywords}
+
+  crawler:
+    ranking: ${URL_CRAWLER_RANKING:http://localhost:9030/v1/ranking/crawl}
+    place: ${URL_CRAWLER_PLACE:http://localhost:9040/v1/place/crawl}
+    keyword: ${URL_CRAWLER_KEYWORD:http://localhost:9050/v1/keyword/crawl}

@@ -1,0 +1,64 @@
+<div th:fragment="sidebar">
+    <nav>
+        <strong>Menu</strong>
+
+        <a th:href="@{/admin}">Dashboard</a>
+
+        <!-- 사용자 관리 (드롭다운) -->
+        <details id="nav-users">
+            <summary>사용자 관리</summary>
+
+            <div style="padding-left:12px; margin-top:8px;">
+                <a th:href="@{/admin/users}" style="margin-bottom:8px;">사용자 관리</a>
+                <a th:href="@{/admin/places}" style="margin-bottom:8px;">플레이스</a>
+                <a th:href="@{/admin/accounts}" style="margin-bottom:8px;">사용자 계정</a>
+                <a th:href="@{/admin/usage}" style="margin-bottom:8px;">일일 사용량</a>
+                <a th:href="@{/admin/payments}" style="margin-bottom:8px;">지불 이력</a>
+            </div>
+        </details>
+
+        <!-- ✅ Billing 메뉴 (전체 리스트 접근) -->
+        <details id="nav-billing">
+            <summary>결제/플랜/캐시</summary>
+
+            <div style="padding-left:12px; margin-top:8px;">
+                <a th:href="@{/admin/payments}" style="margin-bottom:8px;">결제</a>
+                <a th:href="@{/admin/plans}" style="margin-bottom:8px;">플랜</a>
+                <a th:href="@{/admin/cashes}" style="margin-bottom:8px;">캐시</a>
+            </div>
+        </details>
+
+        <a th:href="@{/admin/keywords}">키워드 관리</a>
+        <a th:href="@{/admin/crawling}">크롤링 현황</a>
+        <a th:href="@{/admin/ml}">ML 결과</a>
+
+        <script>
+            (function () {
+                function persistDetailsOpenState(detailsId, storageKey) {
+                    const details = document.getElementById(detailsId);
+                    if (!details) return;
+
+                    // 1) 저장된 상태 복원
+                    const saved = localStorage.getItem(storageKey);
+                    if (saved === "true") details.open = true;
+                    if (saved === "false") details.open = false;
+
+                    // 2) 토글 시 저장
+                    details.addEventListener("toggle", function () {
+                        localStorage.setItem(storageKey, String(details.open));
+                    });
+
+                    // 3) 하위 메뉴 클릭 시 "열림" 유지
+                    details.querySelectorAll("a").forEach(a => {
+                        a.addEventListener("click", () => {
+                            localStorage.setItem(storageKey, "true");
+                        });
+                    });
+                }
+
+                persistDetailsOpenState("nav-users", "sidebar.nav-users.open");
+                persistDetailsOpenState("nav-billing", "sidebar.nav-billing.open");
+            })();
+        </script>
+    </nav>
+</div>

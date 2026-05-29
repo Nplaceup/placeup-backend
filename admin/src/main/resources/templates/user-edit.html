@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="layout/layout :: layout(~{::content})">
+
+<div th:fragment="content">
+  <h2>사용자 수정&상세보기</h2>
+
+  <!-- 기본 정보(수정 불가) -->
+  <div style="margin: 10px 0 16px; padding: 10px; border: 1px solid #ddd;">
+    <div><b>ID:</b> <span th:text="${user.id}">1</span></div>
+    <div><b>Email:</b> <span th:text="${user.email}">a@test.com</span></div>
+    <div><b>Status:</b> <span th:text="${user.isActive}">ACTIVE</span></div>
+
+    <div><b>CreatedAt:</b>
+      <span th:text="${user.createdAt != null ? #temporals.format(user.createdAt, 'yyyy-MM-dd HH:mm:ss') : '-'}">-</span>
+    </div>
+
+    <div><b>UpdatedAt:</b>
+      <span th:text="${user.updatedAt != null ? #temporals.format(user.updatedAt, 'yyyy-MM-dd HH:mm:ss') : '-'}">-</span>
+    </div>
+  </div>
+
+  <!-- =======================================================
+       ✅ 관리자 지급(플랜/캐시) - 폼 바인딩(userId/orderName/amount)
+       POST /admin/payments/confirm
+       ======================================================= -->
+  <div style="margin: 18px 0; padding: 12px; border: 1px solid #ddd;">
+    <h3 style="margin:0 0 12px;">플랜/캐시 수정(관리자 지급)</h3>
+
+    <!-- 플랜 지급 -->
+    <form th:action="@{/admin/payments/confirm}" method="post"
+          style="margin: 12px 0; padding: 10px; border: 1px solid #eee; background:#fafafa; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <!-- CSRF -->
+      <input type="hidden" th:if="${_csrf != null}"
+             th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+      <!-- ✅ DTO 필드명과 반드시 일치: userId / orderName / amount -->
+      <input type="hidden" name="userId" th:value="${user.id}"/>
+      <input type="hidden" name="amount" value="0"/>
+
+      <div style="font-weight:bold;">플랜 지급/연장</div>
+
+      <select name="orderName" style="padding:6px;">
+        <option value="PLAN_1">PLAN_1 (30일)</option>
+        <option value="PLAN_3">PLAN_3 (90일)</option>
+        <option value="PLAN_TRIAL">PLAN_TRIAL (3일)</option>
+        <option value="PLAN_1_PROMOTION">PLAN_1_PROMOTION (60일)</option>
+      </select>
+
+      <button type="submit"
+              class="js-confirm"
+              data-confirm="플랜을 저장/연장하시겠습니까?"
+              style="padding:6px 10px;">
+        저장
+      </button>
+
+      <span style="color:#666; font-size:12px;">
+        (payment_history에 ADMIN_PROVIDED/DONE으로 기록됩니다)
+      </span>
+    </form>
+
+    <!-- 캐시 지급 -->
+    <form th:action="@{/admin/payments/confirm}" method="post"
+          style="margin: 12px 0; padding: 10px; border: 1px solid #eee; background:#fafafa; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <!-- CSRF -->
+      <input type="hidden" th:if="${_csrf != null}"
+             th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+      <!-- ✅ DTO 필드명과 반드시 일치: userId / orderName / amount -->
+      <input type="hidden" name="userId" th:value="${user.id}"/>
+      <input type="hidden" name="orderName" value="ADMIN_CASH"/>
+
+      <div style="font-weight:bold;">캐시 지급</div>
+
+      <input type="number"
+             name="amount"
+             placeholder="지급할 캐시(예: 100)"
+             min="0"
+             step="1"
+             required
+             style="padding:6px; width:220px;" />
+
+      <button type="submit"
+              class="js-confirm"
+              data-confirm="캐시를 지급하시겠습니까?"
+              style="padding:6px 10px;">
+        저장
+      </button>
+
+      <span style="color:#666; font-size:12px;">
+        (payment_history에 ADMIN_PROVIDED/DONE으로 기록됩니다)
+      </span>
+    </form>
+  </div>
+
+  <!-- =======================================================
+       ✅ 상세 정보: 사용자별 플레이스(user_places) + 키워드(place_keywords)
+       ======================================================= -->
+  <div style="margin: 18px 0; padding: 12px; border: 1px solid #ddd;">
+    <h3 style="margin:0 0 12px;">사용자 플레이스</h3>
+
+    <div th:if="${userPlaces == null or #lists.isEmpty(userPlaces)}" style="padding:10px;">
+      등록된 플레이스가 없습니다.
+    </div>
+
+    <div th:each="p : ${userPlaces}" style="margin-bottom:14px; padding:10px; border:1px solid #eee;">
+      <!-- Place 요약 -->
+      <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
+        <div><b>PlaceId:</b> <span th:text="${p.id}">-</span></div>
+        <div><b>NaverPlaceId:</b> <span th:text="${p.naverPlaceId}">-</span></div>
+        <div><b>Name:</b> <span th:text="${p.naverPlaceName}">-</span></div>
+        <div><b>Status:</b> <span th:text="${p.placeStatus}">-</span></div>
+        <div><b>CreatedAt:</b>
+          <span th:text="${p.createdAt != null ? #temporals.format(p.createdAt, 'yyyy-MM-dd HH:mm:ss') : '-'}">-</span>
+        </div>
+
+        <div>
+          <a th:if="${p.naverPlaceUrl != null and p.naverPlaceUrl != ''}"
+             th:href="${p.naverPlaceUrl}"
+             target="_blank"
+             style="padding:4px 8px; border:1px solid #ccc; text-decoration:none;">
+            링크
+          </a>
+        </div>
+      </div>
+
+      <!-- ✅ Admin 키워드 추가 폼 (place별) -->
+      <div style="margin-top:10px; padding:10px; border:1px solid #f0f0f0; background:#fafafa;">
+        <div style="font-weight:bold; margin-bottom:8px;">키워드 추가</div>
+
+        <form th:action="@{/admin/users/{id}/place-keywords(id=${user.id})}"
+              method="post"
+              style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+
+          <!-- CSRF -->
+          <input type="hidden" th:if="${_csrf != null}"
+                 th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+          <!-- 어떤 place에 추가할지 -->
+          <input type="hidden" name="userPlaceId" th:value="${p.id}"/>
+
+          <!-- Name 기반 등록 -->
+          <input type="text"
+                 name="locationName"
+                 placeholder="지역명 (예: 강남)"
+                 style="padding:6px; width:160px;"
+                 required />
+
+          <input type="text"
+                 name="industryName"
+                 placeholder="업종명 (예: 카페)"
+                 style="padding:6px; width:160px;"
+                 required />
+
+          <button type="submit" style="padding:6px 10px;">추가</button>
+
+          <span style="color:#666; font-size:12px;">
+            (최대 6개 / 동일 키워드 중복 불가)
+          </span>
+        </form>
+      </div>
+
+      <!-- Keywords -->
+      <div style="margin-top:10px;">
+        <h4 style="margin:0 0 8px;">사용자 키워드</h4>
+
+        <table border="1" cellpadding="6" style="width:100%; border-collapse:collapse;">
+          <thead>
+          <tr style="background:#fafafa;">
+            <th style="width:70px;">ID</th>
+            <th>Keyword</th>
+            <th style="width:120px;">Status</th>
+            <th style="width:120px;">Favorite</th>
+            <th style="width:180px;">CreatedAt</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:each="k : ${placeKeywordsMap[p.id]}">
+            <td th:text="${k.id}">-</td>
+            <td th:text="${k.keywordName}">-</td>
+            <td th:text="${k.status}">-</td>
+            <td th:text="${k.favoriteFlag}">-</td>
+            <td th:text="${k.createdAt != null ? #temporals.format(k.createdAt, 'yyyy-MM-dd HH:mm:ss') : '-'}">-</td>
+          </tr>
+
+          <tr th:if="${placeKeywordsMap[p.id] == null or #lists.isEmpty(placeKeywordsMap[p.id])}">
+            <td colspan="5" style="text-align:center; padding:10px;">해당 플레이스에 등록된 키워드가 없습니다.</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================
+       Role 수정 폼
+       ==================== -->
+  <form th:action="@{/admin/users/{id}/edit(id=${user.id})}"
+        method="post"
+        style="display:flex; flex-direction:column; gap:12px; max-width:420px;">
+
+    <input type="hidden" th:if="${_csrf != null}"
+           th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+    <label style="display:flex; flex-direction:column; gap:6px;">
+      <span><b>Role</b></span>
+      <select name="role" style="padding:8px;">
+        <option th:each="r : ${roles}"
+                th:value="${r}"
+                th:text="${r}"
+                th:selected="${user.role == r}">
+        </option>
+      </select>
+    </label>
+
+    <div style="display:flex; gap:10px; margin-top:6px;">
+      <button type="submit" style="padding:8px 14px;">저장</button>
+      <a th:href="@{/admin/users}"
+         style="padding:8px 14px; border:1px solid #ccc; text-decoration:none;">
+        취소
+      </a>
+    </div>
+  </form>
+
+  <!-- confirm 처리 -->
+  <script>
+    document.addEventListener('click', function (e) {
+      const btn = e.target.closest('.js-confirm');
+      if (!btn) return;
+      const msg = btn.getAttribute('data-confirm') || '진행할까요?';
+      if (!confirm(msg)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    });
+  </script>
+</div>
+</html>
