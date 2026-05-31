@@ -31,32 +31,96 @@ public class AnalysisStatusUseCase {
 
         Places place = placesRepository.findByNaverPlaceId(naverPlaceId);
         if (place == null) {
+            log.info("[AnalysisStatus] 플레이스 없음 naverPlaceId={}", naverPlaceId);
             return AnalysisStatusResponse.noHistory(naverPlaceId);
         }
 
         AnalysisStatusType status = analysisStatusService.getStatus(place.getId());
-        if (status == null) {
-            return AnalysisStatusResponse.noHistory(naverPlaceId);
-        }
 
-        if (status == AnalysisStatusType.COMPLETED) {
-            List<RecommendKeyword> keywords =
-                    recommendKeywordRepository.findByPlaceIdOrderByScoreDesc(
-                            place.getId().intValue());
-            SeoResult seoResult = seoResultRepository
-                    .findByPlaceId(place.getId())
-                    .orElse(null);
+        List<RecommendKeyword> keywords =
+                recommendKeywordRepository.findByPlaceIdOrderByScoreDesc(
+                        place.getId().intValue()
+                );
 
-            log.info("[AnalysisStatus] 완료 naverPlaceId={}, keywords={}", naverPlaceId, keywords.size());
+        SeoResult seoResult = seoResultRepository
+                .findByPlaceId(place.getId())
+                .orElse(null);
+
+        /*
+         * 기존 DB 데이터 보정 로직
+         *
+         * apply_changes.sh 적용 전에 이미 분석이 끝난 place는
+         * recommend_keywords, seo_results에는 데이터가 있지만
+         * analysis_status에는 데이터가 없을 수 있다.
+         *
+         * 따라서 status가 null이어도 결과 데이터가 있으면 COMPLETED로 간주한다.
+         */
+        if (status == null && !keywords.isEmpty() && seoResult != null) {
+            log.info(
+                    "[AnalysisStatus] 상태 기록 없음, 기존 분석 결과 존재 → COMPLETED 응답 naverPlaceId={}, placeId={}, keywords={}",
+                    naverPlaceId,
+                    place.getId(),
+                    keywords.size()
+            );
+
             return AnalysisStatusResponse.completed(place, keywords, seoResult);
         }
 
+        /*
+         * 상태도 없고 결과 데이터도 없으면
+         * 아직 분석 요청 이력이 없는 것으로 처리한다.
+         */
+        if (status == null) {
+            log.info(
+                    "[AnalysisStatus] 분석 이력 없음 naverPlaceId={}, placeId={}",
+                    naverPlaceId,
+                    place.getId()
+            );
+
+            return AnalysisStatusResponse.noHistory(naverPlaceId);
+        }
+
+        /*
+         * 분석 완료 상태
+         * analysis_status가 COMPLETED이면 결과 데이터를 함께 반환한다.
+         */
+        if (status == AnalysisStatusType.COMPLETED) {
+            log.info(
+                    "[AnalysisStatus] 완료 naverPlaceId={}, placeId={}, keywords={}",
+                    naverPlaceId,
+                    place.getId(),
+                    keywords.size()
+            );
+
+            return AnalysisStatusResponse.completed(place, keywords, seoResult);
+        }
+
+        /*
+         * 분석 실패 상태
+         */
         if (status == AnalysisStatusType.FAILED) {
-            log.warn("[AnalysisStatus] 실패 naverPlaceId={}", naverPlaceId);
+            log.warn(
+                    "[AnalysisStatus] 실패 naverPlaceId={}, placeId={}",
+                    naverPlaceId,
+                    place.getId()
+            );
+
             return AnalysisStatusResponse.analyzing(place, status);
         }
 
-        log.info("[AnalysisStatus] 진행 중 naverPlaceId={}, status={}", naverPlaceId, status);
+        /*
+         * 그 외 상태는 진행 중으로 반환
+         * REQUESTED, PLACE_CRAWLING, REVIEW_CRAWLING,
+         * KEYWORD_EXTRACTING, RANKING_CRAWLING,
+         * SEARCH_VOLUME_CRAWLING, SEO_ANALYZING 등
+         */
+        log.info(
+                "[AnalysisStatus] 진행 중 naverPlaceId={}, placeId={}, status={}",
+                naverPlaceId,
+                place.getId(),
+                status
+        );
+
         return AnalysisStatusResponse.analyzing(place, status);
     }
 }

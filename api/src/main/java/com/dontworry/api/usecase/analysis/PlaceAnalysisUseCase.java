@@ -50,6 +50,7 @@ public class PlaceAnalysisUseCase {
         // 키워드 + SEO 둘 다 있으면 → 재분석 없이 완료 반환
         if (hasKeywords && hasSeo) {
             log.info("[PlaceAnalysis] 분석 완료 상태 naverPlaceId={}", naverPlaceId);
+            analysisStatusService.update(place.getId(), AnalysisStatusType.COMPLETED);
             return PlaceAnalysisResponse.of(place);
         }
 
