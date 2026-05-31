@@ -14,7 +14,6 @@ import com.dontworry.core.domain.place.entity.Places;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -33,7 +32,6 @@ public class PlaceAnalysisUseCase {
 
     public PlaceAnalysisResponse getAnalysis(String url) {
 
-        // 1. place 기본정보 조회 (url -> placeId, placeName)
         PlaceInfoResponse placeInfo = placeHtmlClient.validateUserPlacesUrl(url);
         Long naverPlaceId = placeInfo.getNaverPlaceId();
 
@@ -42,32 +40,18 @@ public class PlaceAnalysisUseCase {
             place = placeService.createOrUpdatePlaces(placeInfo);
         }
 
-        // 2. 분석 결과 존재 여부 확인
-        // 상태 1: recommend_keywords 없음 → 분석 요청
-        // 상태 2: recommend_keywords만 있음 → 분석 중 (round2 대기)
-        // 상태 3: seo_results까지 있음 → 분석 완료
         boolean hasKeywords = !recommendKeywordRepository
-                .findByPlaceIdOrderByScoreDesc(place.getId().intValue())
-                .isEmpty();
+                .findByPlaceIdOrderByScoreDesc(place.getId().intValue()).isEmpty();
         boolean hasSeo = seoResultRepository.findByPlaceId(place.getId()).isPresent();
 
-        if (hasSeo) {
-            // 상태 3: 이미 분석 완료 → 재분석 요청
-            log.info("[PlaceAnalysis] 상태3 재분석 요청 naverPlaceId={}", naverPlaceId);
-            requestAnalysisWithReviewCheck(url, place, naverPlaceId);
-            return PlaceAnalysisResponse.analyzing(place);
+        // 키워드 + SEO 둘 다 있으면 → 재분석 없이 완료 반환
+        if (hasKeywords && hasSeo) {
+            log.info("[PlaceAnalysis] 분석 완료 상태 naverPlaceId={}", naverPlaceId);
+            return PlaceAnalysisResponse.of(place);
         }
 
-        if (hasKeywords) {
-            // 상태 2: round1 완료, round2 대기 중 → 중복 요청 방지
-            log.info("[PlaceAnalysis] 상태2 분석 중 (round2 대기) naverPlaceId={}", naverPlaceId);
-            return PlaceAnalysisResponse.analyzing(place);
-        }
-
-        // 상태 1: 분석 이력 없음 → 리뷰 확인 후 분석 요청
-        log.info("[PlaceAnalysis] 상태1 최초 분석 요청 naverPlaceId={}", naverPlaceId);
+        // 하나라도 없으면 → 분석 요청
         requestAnalysisWithReviewCheck(url, place, naverPlaceId);
-
         return PlaceAnalysisResponse.analyzing(place);
     }
 
@@ -77,8 +61,7 @@ public class PlaceAnalysisUseCase {
             log.info("[PlaceAnalysis] 리뷰 있음 → 분석 요청 naverPlaceId={}", naverPlaceId);
             analysisRedisPublisher.requestAnalysisRound1(place.getId());
         } else {
-            // 리뷰 없음 → PlaceDetailUseCase로 크롤링 + 저장 → 분석 요청
-            log.info("[PlaceAnalysis] 리뷰 없음 → PlaceDetailUseCase 크롤링 naverPlaceId={}", naverPlaceId);
+            log.info("[PlaceAnalysis] 리뷰 없음 → 크롤링 후 분석 요청 naverPlaceId={}", naverPlaceId);
             placeDetailUseCase.getPlaceDetail(url);
             analysisRedisPublisher.requestAnalysisRound1(place.getId());
         }
