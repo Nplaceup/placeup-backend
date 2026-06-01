@@ -55,19 +55,29 @@ public class PlaceAnalysisUseCase {
 
         /*
          * 상태 2: 키워드 분석 결과는 존재하지만 SEO 분석 결과는 없음
-         * → round1 키워드 분석을 다시 요청하지 않고 round2 SEO 분석만 요청
+         * → Python round=2 로직도 현재 키워드 재계산을 포함하므로
+         *   별도 Redis 요청을 보내지 않고 분석 진행 중으로 판단
          */
         if (hasKeywords) {
-            log.info("[PlaceAnalysis] 키워드 분석 완료, SEO 분석 요청 naverPlaceId={}", naverPlaceId);
-            analysisRedisPublisher.requestAnalysisRound2(place.getId());
+            log.info("[PlaceAnalysis] 키워드 분석 완료, SEO 분석 대기 중 naverPlaceId={}", naverPlaceId);
             return PlaceAnalysisResponse.analyzing(place);
         }
 
         /*
-         * 상태 1: 키워드 분석 결과가 없음
-         * → 리뷰 데이터 확인 후 round1 키워드 분석 요청
+         * 상태 1: 키워드 분석 결과와 SEO 분석 결과가 모두 없음
+         * → 최초 분석 요청
          */
-        log.info("[PlaceAnalysis] 분석 결과 없음, 최초 분석 요청 naverPlaceId={}", naverPlaceId);
+        if (!hasSeo) {
+            log.info("[PlaceAnalysis] 분석 결과 없음, 최초 분석 요청 naverPlaceId={}", naverPlaceId);
+            requestAnalysisWithReviewCheck(url, place, naverPlaceId);
+            return PlaceAnalysisResponse.analyzing(place);
+        }
+
+        /*
+         * 예외 상태: SEO 결과는 있지만 키워드 결과가 없음
+         * → 정상적인 분석 완료 상태가 아니므로 재분석 요청
+         */
+        log.warn("[PlaceAnalysis] 비정상 분석 상태: SEO 결과는 있으나 키워드 결과 없음 naverPlaceId={}", naverPlaceId);
         requestAnalysisWithReviewCheck(url, place, naverPlaceId);
         return PlaceAnalysisResponse.analyzing(place);
     }
