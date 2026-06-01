@@ -67,6 +67,20 @@ public class AnalysisStatusUseCase {
         }
 
         /*
+         * status는 없지만 keyword만 있는 경우 → SEO 분석 진행 중
+         * Python round=2가 실행 중이거나, 서버 재시작 등으로 status 레코드가 유실된 상태
+         */
+        if (status == null && !keywords.isEmpty()) {
+            log.info(
+                    "[AnalysisStatus] 상태 기록 없음, 키워드 존재 → SEO 분석 진행 중으로 판단 naverPlaceId={}, placeId={}",
+                    naverPlaceId,
+                    place.getId()
+            );
+
+            return AnalysisStatusResponse.analyzing(place, AnalysisStatusType.SEO_ANALYZING);
+        }
+
+        /*
          * 상태도 없고 결과 데이터도 없으면
          * 아직 분석 요청 이력이 없는 것으로 처리한다.
          */
