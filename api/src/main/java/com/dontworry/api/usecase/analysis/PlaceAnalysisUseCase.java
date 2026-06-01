@@ -47,14 +47,20 @@ public class PlaceAnalysisUseCase {
                 .findByPlaceIdOrderByScoreDesc(place.getId().intValue()).isEmpty();
         boolean hasSeo = seoResultRepository.findByPlaceId(place.getId()).isPresent();
 
-        // 키워드 + SEO 둘 다 있으면 → 재분석 없이 완료 반환
+        // 키워드 + SEO 둘 다 완료 → 재분석 없이 완료 반환
         if (hasKeywords && hasSeo) {
             log.info("[PlaceAnalysis] 분석 완료 상태 naverPlaceId={}", naverPlaceId);
             analysisStatusService.update(place.getId(), AnalysisStatusType.COMPLETED);
             return PlaceAnalysisResponse.of(place);
         }
 
-        // 하나라도 없으면 → 분석 요청
+        // 키워드 또는 SEO 중 하나라도 결과 존재 → 분석 진행 중이므로 재요청 없이 대기 응답
+        if (hasKeywords || hasSeo) {
+            log.info("[PlaceAnalysis] 분석 진행 중 상태 naverPlaceId={}", naverPlaceId);
+            return PlaceAnalysisResponse.analyzing(place);
+        }
+
+        // 키워드 + SEO 둘 다 없을 때만 분석 요청
         analysisStatusService.update(place.getId(), AnalysisStatusType.REQUESTED);
         requestAnalysisWithReviewCheck(url, place, naverPlaceId);
         return PlaceAnalysisResponse.analyzing(place);
