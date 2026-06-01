@@ -46,95 +46,51 @@ public class AnalysisStatusUseCase {
                 .findByPlaceId(place.getId())
                 .orElse(null);
 
-        /*
-         * 기존 DB 데이터 보정 로직
-         *
-         * apply_changes.sh 적용 전에 이미 분석이 끝난 place는
-         * recommend_keywords, seo_results에는 데이터가 있지만
-         * analysis_status에는 데이터가 없을 수 있다.
-         *
-         * 따라서 status가 null이어도 결과 데이터가 있으면 COMPLETED로 간주한다.
-         */
-        if (status == null && !keywords.isEmpty() && seoResult != null) {
-            log.info(
-                    "[AnalysisStatus] 상태 기록 없음, 기존 분석 결과 존재 → COMPLETED 응답 naverPlaceId={}, placeId={}, keywords={}",
-                    naverPlaceId,
-                    place.getId(),
-                    keywords.size()
-            );
-
-            return AnalysisStatusResponse.completed(place, keywords, seoResult);
-        }
-
-        /*
-         * status는 없지만 keyword만 있는 경우 → SEO 분석 진행 중
-         * Python round=2가 실행 중이거나, 서버 재시작 등으로 status 레코드가 유실된 상태
-         */
-        if (status == null && !keywords.isEmpty()) {
-            log.info(
-                    "[AnalysisStatus] 상태 기록 없음, 키워드 존재 → SEO 분석 진행 중으로 판단 naverPlaceId={}, placeId={}",
-                    naverPlaceId,
-                    place.getId()
-            );
-
-            return AnalysisStatusResponse.analyzing(place, AnalysisStatusType.SEO_ANALYZING);
-        }
-
-        /*
-         * 상태도 없고 결과 데이터도 없으면
-         * 아직 분석 요청 이력이 없는 것으로 처리한다.
-         */
+        // analysis_status 기록이 없는 케이스 처리
+        // (analysis_status 테이블 도입 이전에 분석된 데이터, 또는 PlaceAnalysisUseCase에서 재요청 없이 대기한 경우)
         if (status == null) {
-            log.info(
-                    "[AnalysisStatus] 분석 이력 없음 naverPlaceId={}, placeId={}",
-                    naverPlaceId,
-                    place.getId()
-            );
+            // keyword + SEO 모두 있으면 → 완료
+            if (!keywords.isEmpty() && seoResult != null) {
+                log.info("[AnalysisStatus] 상태 기록 없음, 분석 결과 존재 → COMPLETED 응답 naverPlaceId={}, placeId={}, keywords={}",
+                        naverPlaceId, place.getId(), keywords.size());
+                return AnalysisStatusResponse.completed(place, keywords, seoResult);
+            }
 
+            // keyword만 있으면 → SEO 분석 진행 중
+            if (!keywords.isEmpty()) {
+                log.info("[AnalysisStatus] 상태 기록 없음, 키워드 존재 → SEO 분석 진행 중 naverPlaceId={}, placeId={}",
+                        naverPlaceId, place.getId());
+                return AnalysisStatusResponse.analyzing(place, AnalysisStatusType.SEO_ANALYZING);
+            }
+
+            // 아무것도 없으면 → 분석 이력 없음
+            log.info("[AnalysisStatus] 분석 이력 없음 naverPlaceId={}, placeId={}", naverPlaceId, place.getId());
             return AnalysisStatusResponse.noHistory(naverPlaceId);
         }
 
-        /*
-         * 분석 완료 상태
-         * analysis_status가 COMPLETED이면 결과 데이터를 함께 반환한다.
-         */
-        if (status == AnalysisStatusType.COMPLETED) {
-            log.info(
-                    "[AnalysisStatus] 완료 naverPlaceId={}, placeId={}, keywords={}",
-                    naverPlaceId,
-                    place.getId(),
-                    keywords.size()
-            );
+        // COMPLETED 상태인데 SEO 결과가 없으면 → DB 불일치, SEO 분석 진행 중으로 처리
+        if (status == AnalysisStatusType.COMPLETED && seoResult == null) {
+            log.info("[AnalysisStatus] COMPLETED이나 SEO 결과 없음 → SEO 분석 진행 중 naverPlaceId={}, placeId={}",
+                    naverPlaceId, place.getId());
+            return AnalysisStatusResponse.analyzing(place, AnalysisStatusType.SEO_ANALYZING);
+        }
 
+        // 정상 완료
+        if (status == AnalysisStatusType.COMPLETED) {
+            log.info("[AnalysisStatus] 완료 naverPlaceId={}, placeId={}, keywords={}",
+                    naverPlaceId, place.getId(), keywords.size());
             return AnalysisStatusResponse.completed(place, keywords, seoResult);
         }
 
-        /*
-         * 분석 실패 상태
-         */
+        // 실패
         if (status == AnalysisStatusType.FAILED) {
-            log.warn(
-                    "[AnalysisStatus] 실패 naverPlaceId={}, placeId={}",
-                    naverPlaceId,
-                    place.getId()
-            );
-
+            log.warn("[AnalysisStatus] 실패 naverPlaceId={}, placeId={}", naverPlaceId, place.getId());
             return AnalysisStatusResponse.analyzing(place, status);
         }
 
-        /*
-         * 그 외 상태는 진행 중으로 반환
-         * REQUESTED, PLACE_CRAWLING, REVIEW_CRAWLING,
-         * KEYWORD_EXTRACTING, RANKING_CRAWLING,
-         * SEARCH_VOLUME_CRAWLING, SEO_ANALYZING 등
-         */
-        log.info(
-                "[AnalysisStatus] 진행 중 naverPlaceId={}, placeId={}, status={}",
-                naverPlaceId,
-                place.getId(),
-                status
-        );
-
+        // 진행 중 (REQUESTED, PLACE_CRAWLING, REVIEW_CRAWLING, KEYWORD_EXTRACTING,
+        //          RANKING_CRAWLING, SEARCH_VOLUME_CRAWLING, SEO_ANALYZING)
+        log.info("[AnalysisStatus] 진행 중 naverPlaceId={}, placeId={}, status={}", naverPlaceId, place.getId(), status);
         return AnalysisStatusResponse.analyzing(place, status);
     }
 }
