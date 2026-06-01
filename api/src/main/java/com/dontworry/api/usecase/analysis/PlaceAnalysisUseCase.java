@@ -44,13 +44,30 @@ public class PlaceAnalysisUseCase {
                 .findByPlaceIdOrderByScoreDesc(place.getId().intValue()).isEmpty();
         boolean hasSeo = seoResultRepository.findByPlaceId(place.getId()).isPresent();
 
-        // 키워드 + SEO 둘 다 있으면 → 재분석 없이 완료 반환
+        /*
+         * 상태 3: 키워드 분석 결과와 SEO 분석 결과가 모두 존재
+         * → 이미 분석 완료된 상태이므로 재분석 요청 없이 완료 응답 반환
+         */
         if (hasKeywords && hasSeo) {
             log.info("[PlaceAnalysis] 분석 완료 상태 naverPlaceId={}", naverPlaceId);
             return PlaceAnalysisResponse.of(place);
         }
 
-        // 하나라도 없으면 → 분석 요청
+        /*
+         * 상태 2: 키워드 분석 결과는 존재하지만 SEO 분석 결과는 없음
+         * → round1 키워드 분석을 다시 요청하지 않고 round2 SEO 분석만 요청
+         */
+        if (hasKeywords) {
+            log.info("[PlaceAnalysis] 키워드 분석 완료, SEO 분석 요청 naverPlaceId={}", naverPlaceId);
+            analysisRedisPublisher.requestAnalysisRound2(place.getId());
+            return PlaceAnalysisResponse.analyzing(place);
+        }
+
+        /*
+         * 상태 1: 키워드 분석 결과가 없음
+         * → 리뷰 데이터 확인 후 round1 키워드 분석 요청
+         */
+        log.info("[PlaceAnalysis] 분석 결과 없음, 최초 분석 요청 naverPlaceId={}", naverPlaceId);
         requestAnalysisWithReviewCheck(url, place, naverPlaceId);
         return PlaceAnalysisResponse.analyzing(place);
     }
@@ -58,12 +75,13 @@ public class PlaceAnalysisUseCase {
     private void requestAnalysisWithReviewCheck(String url, Places place, Long naverPlaceId) {
         boolean hasReviews = placeReviewRepository.existsByPlace(place);
         if (hasReviews) {
-            log.info("[PlaceAnalysis] 리뷰 있음 → 분석 요청 naverPlaceId={}", naverPlaceId);
+            log.info("[PlaceAnalysis] 리뷰 있음 → round1 분석 요청 naverPlaceId={}", naverPlaceId);
             analysisRedisPublisher.requestAnalysisRound1(place.getId());
-        } else {
-            log.info("[PlaceAnalysis] 리뷰 없음 → 크롤링 후 분석 요청 naverPlaceId={}", naverPlaceId);
-            placeDetailUseCase.getPlaceDetail(url);
-            analysisRedisPublisher.requestAnalysisRound1(place.getId());
+            return;
         }
+
+        log.info("[PlaceAnalysis] 리뷰 없음 → 크롤링 후 round1 분석 요청 naverPlaceId={}", naverPlaceId);
+        placeDetailUseCase.getPlaceDetail(url);
+        analysisRedisPublisher.requestAnalysisRound1(place.getId());
     }
 }
