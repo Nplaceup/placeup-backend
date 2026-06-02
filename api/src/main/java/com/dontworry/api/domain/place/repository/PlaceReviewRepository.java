@@ -10,4 +10,5 @@ public interface PlaceReviewRepository extends JpaRepository<PlaceReviews, Long>
 
     List<PlaceReviews> findByPlace(Places place);
     boolean existsByPlaceAndNaverReviewId(Places place, String naverReviewId);
+    boolean existsByPlace(Places place);
 }

@@ -2,7 +2,7 @@ package com.dontworry.api.controller.analysis;
 
 import com.dontworry.api.common.constant.Uri;
 import com.dontworry.api.common.dto.ApiResponse;
-import com.dontworry.api.controller.analysis.dto.AnalysisResultResponse;
+import com.dontworry.api.controller.analysis.dto.AnalysisStatusResponse;
 import com.dontworry.api.controller.analysis.dto.PlaceAnalysisResponse;
 import com.dontworry.api.usecase.analysis.AnalysisResultUseCase;
 import com.dontworry.api.usecase.analysis.PlaceAnalysisUseCase;
@@ -19,16 +19,14 @@ public class PlaceAnalysisController {
     private final AnalysisResultUseCase analysisResultUseCase;
 
     @PostMapping
-    public ResponseEntity<?> getAnalysis(@RequestBody String url) {
-        PlaceAnalysisResponse result = placeAnalysisUseCase.getAnalysis(url);
+    public ResponseEntity<?> startAnalysis(@RequestBody String url) {
+        PlaceAnalysisResponse result = placeAnalysisUseCase.getOrRequestAnalysis(url);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @GetMapping
     public ResponseEntity<?> getAnalysisResult(@RequestParam Long naverPlaceId) {
-        AnalysisResultResponse result =
-                analysisResultUseCase.getAnalysisResult(naverPlaceId);
+        AnalysisStatusResponse result = analysisResultUseCase.getResult(naverPlaceId);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
-
 }

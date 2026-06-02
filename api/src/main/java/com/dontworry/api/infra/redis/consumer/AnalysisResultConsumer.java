@@ -1,11 +1,13 @@
 package com.dontworry.api.infra.redis.consumer;
 
+import com.dontworry.api.domain.place.service.AnalysisStatusService;
 import com.dontworry.api.usecase.ranking.RankSearchUseCase;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.dontworry.api.infra.redis.publisher.AnalysisRedisPublisher;
 import com.dontworry.api.domain.place.repository.PlacesRepository;
 import com.dontworry.core.domain.place.entity.Places;
+import com.dontworry.core.domain.place.enums.AnalysisStatusType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -27,6 +29,7 @@ public class AnalysisResultConsumer {
     private final PlacesRepository placesRepository;
     private final RankSearchUseCase rankSearchUseCase;
     private final AnalysisRedisPublisher analysisRedisPublisher;
+    private final AnalysisStatusService analysisStatusService;
 
     @Async
     public void startConsuming() {
@@ -76,6 +79,7 @@ public class AnalysisResultConsumer {
         node.get("keywords").forEach(k -> keywords.add(k.asText()));
 
         log.info("[Redis] 1차 키워드 {}개 수신, RankSearch 시작", keywords.size());
+        analysisStatusService.update(place.getId(), AnalysisStatusType.RANKING_CRAWLING);
 
         keywords.stream()
                 .limit(10)
@@ -89,6 +93,7 @@ public class AnalysisResultConsumer {
                 });
 
         log.info("[Redis] RankSearch 완료, 2차 분석 요청 placeId={}", place.getId());
+        analysisStatusService.update(place.getId(), AnalysisStatusType.SEO_ANALYZING);
         analysisRedisPublisher.requestAnalysisRound2(place.getId());
     }
 
@@ -103,6 +108,7 @@ public class AnalysisResultConsumer {
 
         if (seoNode == null || feedbackNode == null) {
             log.warn("[Redis] SEO 데이터 없음 placeId={}", place.getId());
+            analysisStatusService.update(place.getId(), AnalysisStatusType.FAILED);
             return;
         }
 
@@ -114,5 +120,7 @@ public class AnalysisResultConsumer {
 
         log.info("[Redis] recommend_keywords, seo_results 저장 완료 (Python 직접 저장) placeId={}",
                 place.getId());
+
+        analysisStatusService.update(place.getId(), AnalysisStatusType.COMPLETED);
     }
 }
