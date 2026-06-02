@@ -20,7 +20,7 @@ public class PlaceAnalysisController {
 
     @PostMapping
     public ResponseEntity<?> startAnalysis(@RequestBody String url) {
-        PlaceAnalysisResponse result = placeAnalysisUseCase.initializeAnalysis(url);
+        PlaceAnalysisResponse result = placeAnalysisUseCase.getOrRequestAnalysis(url);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
