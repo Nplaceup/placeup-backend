@@ -33,7 +33,7 @@ public class PlaceAnalysisUseCase {
     private final PlaceDetailUseCase placeDetailUseCase;
 
 
-    public PlaceAnalysisResponse getAnalysis(String url) {
+    public PlaceAnalysisResponse initializeAnalysis(String url) {
 
         PlaceInfoResponse placeInfo = placeHtmlClient.validateUserPlacesUrl(url);
         Long naverPlaceId = placeInfo.getNaverPlaceId();

@@ -20,11 +20,11 @@ public class PlaceAnalysisController {
 
     @PostMapping
     public ResponseEntity<?> startAnalysis(@RequestBody String url) {
-        PlaceAnalysisResponse result = placeAnalysisUseCase.getAnalysis(url);
+        PlaceAnalysisResponse result = placeAnalysisUseCase.initializeAnalysis(url);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
-    @GetMapping("/status")
+    @GetMapping
     public ResponseEntity<?> getAnalysisResult(@RequestParam Long naverPlaceId) {
         AnalysisStatusResponse result = analysisResultUseCase.getResult(naverPlaceId);
         return ResponseEntity.ok(ApiResponse.success(result));
