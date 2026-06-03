@@ -85,7 +85,7 @@ public class AnalysisResultUseCase {
         // 실패
         if (status == AnalysisStatusType.FAILED) {
             log.warn("[AnalysisStatus] 실패 naverPlaceId={}, placeId={}", naverPlaceId, place.getId());
-            return AnalysisStatusResponse.analyzing(place, status);
+            return AnalysisStatusResponse.failed(place);
         }
 
         // 진행 중 (REQUESTED, PLACE_CRAWLING, REVIEW_CRAWLING, KEYWORD_EXTRACTING,
