@@ -52,6 +52,18 @@ public class AnalysisStatusResponse {
                 .build();
     }
 
+    public static AnalysisStatusResponse failed(Places place) {
+        return AnalysisStatusResponse.builder()
+                .naverPlaceId(place.getNaverPlaceId())
+                .placeName(place.getPlaceName())
+                .status(AnalysisStatusType.FAILED)
+                .analyzing(false)
+                .keywords(List.of())
+                .seo(null)
+                .feedback(null)
+                .build();
+    }
+
     public static AnalysisStatusResponse noHistory(Long naverPlaceId) {
         return AnalysisStatusResponse.builder()
                 .naverPlaceId(naverPlaceId)
