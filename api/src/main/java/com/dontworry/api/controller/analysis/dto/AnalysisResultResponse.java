@@ -10,6 +10,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.util.List;
+import java.util.Map;
 
 @Getter
 @Builder
@@ -42,10 +43,9 @@ public class AnalysisResultResponse {
     public static class SeoItem {
         private Integer score;
         private String  grade;
-        private Double  keywordOptimization;
+        // Python place_scorer breakdown 기준
+        private Double  placeCompleteness;
         private Double  reviewQuality;
-        private Double  searchExposure;
-        private Double  competition;
     }
 
     @Getter
@@ -54,6 +54,9 @@ public class AnalysisResultResponse {
         private String       summary;
         private List<String> seoFeedback;
         private List<String> reviewFeedback;
+        private List<String> competitorFeedback;
+        // {category: [keyword, ...]} 형태의 카테고리별 키워드 요약
+        private Map<String, List<String>> placeSummary;
     }
 
     // ── 팩토리 메서드 ─────────────────────────────────────────────────────
@@ -72,29 +75,37 @@ public class AnalysisResultResponse {
             seoItem = SeoItem.builder()
                     .score(seoResult.getScore())
                     .grade(seoResult.getGrade())
-                    .keywordOptimization(seoResult.getKeywordOptimization())
+                    .placeCompleteness(seoResult.getPlaceCompleteness())
                     .reviewQuality(seoResult.getReviewQuality())
-                    .searchExposure(seoResult.getSearchExposure())
-                    .competition(seoResult.getCompetition())
                     .build();
 
             ObjectMapper mapper = new ObjectMapper();
             List<String> seoFeedback;
             List<String> reviewFeedback;
+            List<String> competitorFeedback;
+            Map<String, List<String>> placeSummary;
             try {
-                seoFeedback    = mapper.readValue(seoResult.getSeoFeedback(),
+                seoFeedback         = mapper.readValue(seoResult.getSeoFeedback(),
                         new TypeReference<List<String>>() {});
-                reviewFeedback = mapper.readValue(seoResult.getReviewFeedback(),
+                reviewFeedback      = mapper.readValue(seoResult.getReviewFeedback(),
                         new TypeReference<List<String>>() {});
+                competitorFeedback  = mapper.readValue(seoResult.getCompetitorFeedback(),
+                        new TypeReference<List<String>>() {});
+                placeSummary        = mapper.readValue(seoResult.getPlaceSummary(),
+                        new TypeReference<Map<String, List<String>>>() {});
             } catch (Exception e) {
-                seoFeedback    = List.of();
-                reviewFeedback = List.of();
+                seoFeedback        = List.of();
+                reviewFeedback     = List.of();
+                competitorFeedback = List.of();
+                placeSummary       = Map.of();
             }
 
             feedbackItem = FeedbackItem.builder()
                     .summary(seoResult.getSummary())
                     .seoFeedback(seoFeedback)
                     .reviewFeedback(reviewFeedback)
+                    .competitorFeedback(competitorFeedback)
+                    .placeSummary(placeSummary)
                     .build();
         }
 
