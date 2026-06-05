@@ -98,17 +98,15 @@ public class AnalysisResultConsumer {
             }
         });
 
-        // NLP 키워드 상위 10개 크롤링
-        keywords.stream()
-                .limit(10)
-                .forEach(keyword -> {
-                    try {
-                        rankSearchUseCase.getRankSearch(keyword, place.getNaverPlaceId());
-                        log.info("[RankSearch] 완료 keyword={}", keyword);
-                    } catch (Exception e) {
-                        log.warn("[RankSearch] 실패 keyword={}, error={}", keyword, e.getMessage());
-                    }
-                });
+        // NLP 키워드 상위 ３0개 크롤링
+        keywords.forEach(keyword -> {
+            try {
+                rankSearchUseCase.getRankSearch(keyword, place.getNaverPlaceId());
+                log.info("[RankSearch] 완료 keyword={}", keyword);
+            } catch (Exception e) {
+                log.warn("[RankSearch] 실패 keyword={}, error={}", keyword, e.getMessage());
+            }
+        });
 
         log.info("[Redis] RankSearch 완료, 2차 분석 요청 placeId={}", place.getId());
         analysisStatusService.update(place.getId(), AnalysisStatusType.SEO_ANALYZING);
