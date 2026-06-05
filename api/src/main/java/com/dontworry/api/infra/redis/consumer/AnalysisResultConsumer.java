@@ -78,9 +78,27 @@ public class AnalysisResultConsumer {
         List<String> keywords = new ArrayList<>();
         node.get("keywords").forEach(k -> keywords.add(k.asText()));
 
-        log.info("[Redis] 1차 키워드 {}개 수신, RankSearch 시작", keywords.size());
+        List<String> baseCandidates = new ArrayList<>();
+        JsonNode baseNode = node.get("base_keyword_candidates");
+        if (baseNode != null) {
+            baseNode.forEach(k -> baseCandidates.add(k.asText()));
+        }
+
+        log.info("[Redis] 1차 키워드 {}개 수신, base후보 {}개, RankSearch 시작",
+                keywords.size(), baseCandidates.size());
         analysisStatusService.update(place.getId(), AnalysisStatusType.RANKING_CRAWLING);
 
+        // base 후보 먼저 크롤링 (round=2에서 검색량 DB hit 보장)
+        baseCandidates.forEach(keyword -> {
+            try {
+                rankSearchUseCase.getRankSearch(keyword, place.getNaverPlaceId());
+                log.info("[RankSearch] base완료 keyword={}", keyword);
+            } catch (Exception e) {
+                log.warn("[RankSearch] base실패 keyword={}, error={}", keyword, e.getMessage());
+            }
+        });
+
+        // NLP 키워드 상위 10개 크롤링
         keywords.stream()
                 .limit(10)
                 .forEach(keyword -> {
