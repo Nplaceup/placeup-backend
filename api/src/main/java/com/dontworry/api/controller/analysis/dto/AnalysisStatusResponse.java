@@ -2,6 +2,7 @@ package com.dontworry.api.controller.analysis.dto;
 
 import com.dontworry.core.domain.place.entity.Places;
 import com.dontworry.core.domain.place.enums.AnalysisStatusType;
+import com.dontworry.core.modeling.entity.CompetitorAnalysisResult;
 import com.dontworry.core.modeling.entity.RecommendKeyword;
 import com.dontworry.core.modeling.entity.SeoResult;
 import lombok.Builder;
@@ -18,10 +19,12 @@ public class AnalysisStatusResponse {
     private AnalysisStatusType status;
     private boolean            analyzing;
 
-    private List<AnalysisResultResponse.KeywordItem> keywords;
-    private AnalysisResultResponse.SeoItem           seo;
-    private AnalysisResultResponse.FeedbackItem      feedback;
+    private List<AnalysisResultResponse.KeywordItem>   keywords;
+    private AnalysisResultResponse.SeoItem             seo;
+    private AnalysisResultResponse.FeedbackItem        feedback;
+    private AnalysisResultResponse.CompetitorItem      competitor;
 
+    // ── 분석 진행 중 ─────────────────────────────────────────────────────
     public static AnalysisStatusResponse analyzing(Places place, AnalysisStatusType status) {
         return AnalysisStatusResponse.builder()
                 .naverPlaceId(place.getNaverPlaceId())
@@ -31,15 +34,19 @@ public class AnalysisStatusResponse {
                 .keywords(List.of())
                 .seo(null)
                 .feedback(null)
+                .competitor(null)
                 .build();
     }
 
+    // ── 분석 완료 ────────────────────────────────────────────────────────
     public static AnalysisStatusResponse completed(
             Places place,
             List<RecommendKeyword> keywords,
-            SeoResult seoResult) {
+            SeoResult seoResult,
+            CompetitorAnalysisResult competitorResult) {
 
-        AnalysisResultResponse result = AnalysisResultResponse.of(place, keywords, seoResult);
+        AnalysisResultResponse result =
+                AnalysisResultResponse.of(place, keywords, seoResult, competitorResult);
 
         return AnalysisStatusResponse.builder()
                 .naverPlaceId(place.getNaverPlaceId())
@@ -49,9 +56,11 @@ public class AnalysisStatusResponse {
                 .keywords(result.getKeywords())
                 .seo(result.getSeo())
                 .feedback(result.getFeedback())
+                .competitor(result.getCompetitor())
                 .build();
     }
 
+    // ── 분석 실패 ────────────────────────────────────────────────────────
     public static AnalysisStatusResponse failed(Places place) {
         return AnalysisStatusResponse.builder()
                 .naverPlaceId(place.getNaverPlaceId())
@@ -61,9 +70,11 @@ public class AnalysisStatusResponse {
                 .keywords(List.of())
                 .seo(null)
                 .feedback(null)
+                .competitor(null)
                 .build();
     }
 
+    // ── 분석 이력 없음 ───────────────────────────────────────────────────
     public static AnalysisStatusResponse noHistory(Long naverPlaceId) {
         return AnalysisStatusResponse.builder()
                 .naverPlaceId(naverPlaceId)
@@ -73,6 +84,7 @@ public class AnalysisStatusResponse {
                 .keywords(List.of())
                 .seo(null)
                 .feedback(null)
+                .competitor(null)
                 .build();
     }
 }

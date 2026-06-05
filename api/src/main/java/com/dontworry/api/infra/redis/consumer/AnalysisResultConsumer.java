@@ -1,7 +1,9 @@
 package com.dontworry.api.infra.redis.consumer;
 
+import com.dontworry.api.domain.analysis.repository.CompetitorAnalysisResultRepository;
 import com.dontworry.api.domain.place.service.AnalysisStatusService;
 import com.dontworry.api.usecase.ranking.RankSearchUseCase;
+import com.dontworry.core.modeling.entity.CompetitorAnalysisResult;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.dontworry.api.infra.redis.publisher.AnalysisRedisPublisher;
@@ -30,6 +32,7 @@ public class AnalysisResultConsumer {
     private final RankSearchUseCase rankSearchUseCase;
     private final AnalysisRedisPublisher analysisRedisPublisher;
     private final AnalysisStatusService analysisStatusService;
+    private final CompetitorAnalysisResultRepository competitorAnalysisResultRepository;
 
     @Async
     public void startConsuming() {
@@ -103,8 +106,9 @@ public class AnalysisResultConsumer {
     private void processRound2(Places place, JsonNode node) {
         log.info("[Redis] 2차 분석 완료 placeId={}", place.getId());
 
-        JsonNode seoNode      = node.get("seo");
-        JsonNode feedbackNode = node.get("feedback");
+        JsonNode seoNode        = node.get("seo");
+        JsonNode feedbackNode   = node.get("feedback");
+        JsonNode competitorNode = node.get("competitor"); // ← 신규
 
         if (seoNode == null || feedbackNode == null) {
             log.warn("[Redis] SEO 데이터 없음 placeId={}", place.getId());
@@ -112,14 +116,41 @@ public class AnalysisResultConsumer {
             return;
         }
 
-        // DB 저장은 Python이 완료 — Spring은 로그만 확인
+        // ── 경쟁업체 분석 결과 저장 (competitor 블록이 있을 때만) ──────────────
+        if (competitorNode != null) {
+            try {
+                CompetitorAnalysisResult car = CompetitorAnalysisResult.builder()
+                        .placeId(place.getId())
+                        .competitorCount(competitorNode.get("count").asInt(0))
+                        .competitorNames(competitorNode.get("names").toString())
+                        .gapKeywords(competitorNode.get("gapKeywords").toString())
+                        .rankGapKeywords(competitorNode.get("rankGapKeywords").toString())
+                        .advantageKeywords(competitorNode.get("advantageKeywords").toString())
+                        .categoryGap(competitorNode.get("categoryGap").toString())
+                        .build();
+
+                // upsert: 기존 레코드 있으면 덮어쓰기
+                competitorAnalysisResultRepository.findByPlaceId(place.getId())
+                        .ifPresentOrElse(
+                                existing -> {
+                                    // dirty-check 방식 또는 delete+save
+                                    competitorAnalysisResultRepository.delete(existing);
+                                    competitorAnalysisResultRepository.save(car);
+                                },
+                                () -> competitorAnalysisResultRepository.save(car)
+                        );
+
+                log.info("[Redis] 경쟁업체 분석 저장 완료 placeId={}, count={}",
+                        place.getId(), car.getCompetitorCount());
+            } catch (Exception e) {
+                log.warn("[Redis] 경쟁업체 분석 저장 실패 placeId={}, error={}", place.getId(), e.getMessage());
+            }
+        }
+
         log.info("[Redis] SEO 수신 완료 placeId={}, score={}, grade={}",
                 place.getId(),
                 seoNode.get("total").asInt(),
                 seoNode.get("grade").asText());
-
-        log.info("[Redis] recommend_keywords, seo_results 저장 완료 (Python 직접 저장) placeId={}",
-                place.getId());
 
         analysisStatusService.update(place.getId(), AnalysisStatusType.COMPLETED);
     }

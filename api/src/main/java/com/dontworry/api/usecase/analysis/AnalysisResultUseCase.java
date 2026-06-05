@@ -1,12 +1,14 @@
 package com.dontworry.api.usecase.analysis;
 
 import com.dontworry.api.controller.analysis.dto.AnalysisStatusResponse;
+import com.dontworry.api.domain.analysis.repository.CompetitorAnalysisResultRepository;
 import com.dontworry.api.domain.analysis.repository.RecommendKeywordRepository;
 import com.dontworry.api.domain.analysis.repository.SeoResultRepository;
 import com.dontworry.api.domain.place.repository.PlacesRepository;
 import com.dontworry.api.domain.place.service.AnalysisStatusService;
 import com.dontworry.core.domain.place.entity.Places;
 import com.dontworry.core.domain.place.enums.AnalysisStatusType;
+import com.dontworry.core.modeling.entity.CompetitorAnalysisResult;
 import com.dontworry.core.modeling.entity.RecommendKeyword;
 import com.dontworry.core.modeling.entity.SeoResult;
 import lombok.RequiredArgsConstructor;
@@ -21,10 +23,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AnalysisResultUseCase {
 
-    private final PlacesRepository placesRepository;
-    private final AnalysisStatusService analysisStatusService;
-    private final RecommendKeywordRepository recommendKeywordRepository;
-    private final SeoResultRepository seoResultRepository;
+    private final PlacesRepository                    placesRepository;
+    private final AnalysisStatusService               analysisStatusService;
+    private final RecommendKeywordRepository          recommendKeywordRepository;
+    private final SeoResultRepository                 seoResultRepository;
+    private final CompetitorAnalysisResultRepository  competitorAnalysisResultRepository;
 
     @Transactional(readOnly = true)
     public AnalysisStatusResponse getResult(Long naverPlaceId) {
@@ -46,6 +49,10 @@ public class AnalysisResultUseCase {
                 .findByPlaceId(place.getId())
                 .orElse(null);
 
+        CompetitorAnalysisResult competitorResult = competitorAnalysisResultRepository
+                .findByPlaceId(place.getId())
+                .orElse(null);
+
         // analysis_status 기록이 없는 케이스 처리
         // (analysis_status 테이블 도입 이전에 분석된 데이터, 또는 PlaceAnalysisUseCase에서 재요청 없이 대기한 경우)
         if (status == null) {
@@ -53,7 +60,7 @@ public class AnalysisResultUseCase {
             if (!keywords.isEmpty() && seoResult != null) {
                 log.info("[AnalysisStatus] 상태 기록 없음, 분석 결과 존재 → COMPLETED 응답 naverPlaceId={}, placeId={}, keywords={}",
                         naverPlaceId, place.getId(), keywords.size());
-                return AnalysisStatusResponse.completed(place, keywords, seoResult);
+                return AnalysisStatusResponse.completed(place, keywords, seoResult, competitorResult);
             }
 
             // keyword만 있으면 → SEO 분석 진행 중
@@ -79,7 +86,7 @@ public class AnalysisResultUseCase {
         if (status == AnalysisStatusType.COMPLETED) {
             log.info("[AnalysisStatus] 완료 naverPlaceId={}, placeId={}, keywords={}",
                     naverPlaceId, place.getId(), keywords.size());
-            return AnalysisStatusResponse.completed(place, keywords, seoResult);
+            return AnalysisStatusResponse.completed(place, keywords, seoResult, competitorResult);
         }
 
         // 실패
@@ -90,7 +97,8 @@ public class AnalysisResultUseCase {
 
         // 진행 중 (REQUESTED, PLACE_CRAWLING, REVIEW_CRAWLING, KEYWORD_EXTRACTING,
         //          RANKING_CRAWLING, SEARCH_VOLUME_CRAWLING, SEO_ANALYZING)
-        log.info("[AnalysisStatus] 진행 중 naverPlaceId={}, placeId={}, status={}", naverPlaceId, place.getId(), status);
+        log.info("[AnalysisStatus] 진행 중 naverPlaceId={}, placeId={}, status={}",
+                naverPlaceId, place.getId(), status);
         return AnalysisStatusResponse.analyzing(place, status);
     }
 }

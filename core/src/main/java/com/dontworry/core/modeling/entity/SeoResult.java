@@ -38,7 +38,7 @@ public class SeoResult {
     @Column(nullable = false)
     private Double reviewQuality;
 
-    @Column(nullable = false, columnDefinition = "text")
+    @Column(name = "place_summary", columnDefinition = "text")
     private String placeSummary;
 
     @Column(nullable = false, columnDefinition = "text")
