@@ -42,9 +42,6 @@ public class RecommendKeyword {
     private Double consistencyScore;
 
     @Column(nullable = false)
-    private Boolean isNgram;
-
-    @Column(nullable = false)
     private Boolean isInduced;
 
     @Column(nullable = false, length = 20)
