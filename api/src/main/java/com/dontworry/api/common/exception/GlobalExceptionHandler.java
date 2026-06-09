@@ -6,7 +6,9 @@ import io.jsonwebtoken.ExpiredJwtException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestCookieException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -27,42 +29,45 @@ public class GlobalExceptionHandler {
                 .map(DefaultMessageSourceResolvable::getDefaultMessage)
                 .toList();
 
-        return ResponseEntity
-                .badRequest()
-                .body(ApiResponse.fail(ApiResponseCode.REQUEST_ARGUMENT_ERROR, errors));
+        return fail(HttpStatus.BAD_REQUEST, ApiResponse.fail(ApiResponseCode.REQUEST_ARGUMENT_ERROR, errors));
     }
 
     // 토큰 없음 예외 처리
     @ExceptionHandler(MissingRequestCookieException.class)
     public ResponseEntity<?> MissingRequestCookieException(MissingRequestCookieException e) {
-        return ResponseEntity
-                .status(HttpStatus.UNAUTHORIZED)
-                .body(ApiResponse.fail(ApiResponseCode.MISSING_TOKEN, e.getMessage()));
+        return fail(HttpStatus.UNAUTHORIZED, ApiResponse.fail(ApiResponseCode.MISSING_TOKEN, e.getMessage()));
     }
 
     // 토큰 만료 예외 처리
     @ExceptionHandler(ExpiredJwtException.class)
     public ResponseEntity<?> handleExpiredJwtException(ExpiredJwtException e) {
-        return ResponseEntity
-                .status(HttpStatus.UNAUTHORIZED)
-                .body(ApiResponse.fail(ApiResponseCode.EXPIRED_TOKEN));
+        return fail(HttpStatus.UNAUTHORIZED, ApiResponse.fail(ApiResponseCode.EXPIRED_TOKEN));
     }
 
     // 커스텀 예외 처리
     @ExceptionHandler(CustomException.class)
     public ResponseEntity<?> handleCustomExceptions(CustomException e) {
-        return ResponseEntity
-                .badRequest()
-                .body(ApiResponse.fail(e.getApiResponseCode()));
+        return fail(HttpStatus.BAD_REQUEST, ApiResponse.fail(e.getApiResponseCode()));
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
+    public ResponseEntity<?> handleHttpMediaTypeNotAcceptableException(HttpMediaTypeNotAcceptableException e) {
+        log.warn("Not acceptable media type: {}", e.getMessage());
+        return fail(HttpStatus.NOT_ACCEPTABLE, ApiResponse.fail(ApiResponseCode.FAIL));
     }
 
     // 위에서 처리되지 않은 모든 예외
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleExceptions(Exception e) {
-        log.error(e.getMessage());
+        log.error("Unhandled exception", e);
+        return fail(HttpStatus.BAD_REQUEST, ApiResponse.fail(ApiResponseCode.FAIL));
+    }
+
+    private ResponseEntity<ApiResponse<?>> fail(HttpStatus status, ApiResponse<?> body) {
         return ResponseEntity
-                .badRequest()
-                .body(ApiResponse.fail(ApiResponseCode.FAIL));
+                .status(status)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body);
     }
 
 }

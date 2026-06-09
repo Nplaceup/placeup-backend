@@ -1,46 +1,58 @@
 server:
   port: ${SERVER_PORT:8080}
-
   tomcat:
     max-swallow-size: -1
 
 spring:
   application:
-    name: ${SPRING_APPLICATION_NAME:api}
-
-  profiles:
-    active: ${SPRING_PROFILES_ACTIVE:local}
+    name: api
 
   servlet:
     multipart:
       max-file-size: ${SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE:20MB}
       max-request-size: ${SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE:100MB}
 
-  cloud:
-    aws:
-      region:
-        static: ${AWS_REGION}
-      s3:
-        bucket: ${AWS_S3_BUCKET}
-      credentials:
-        access-key: ${AWS_ACCESS_KEY}
-        secret-key: ${AWS_SECRET_KEY}
-      stack:
-        auto: false
+  datasource:
+    url: jdbc:postgresql://${DATABASE_HOST:localhost}:${DATABASE_PORT:5432}/${DATABASE_NAME:postgres}
+    username: ${DATABASE_USERNAME:devuser}
+    password: ${DATABASE_PASSWORD:devpass}
 
-kakao:
-  rest-api-key: ${KAKAO_REST_API_KEY}
-  client-secret: ${KAKAO_CLIENT_SECRET}
-  admin-key: ${KAKAO_ADMIN_KEY}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
 
-jwt:
-  secret: ${JWT_SECRET}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+    show-sql: ${SPRING_JPA_SHOW_SQL:false}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
+client:
+  origin: ${CLIENT_ORIGIN:http://localhost:5173}
+
+url:
+  callback:
+    rankings: ${URL_CALLBACK_RANKINGS:http://localhost:8080/v1/callback/rankings}
+    places: ${URL_CALLBACK_PLACES:http://localhost:8080/v1/callback/places}
+    keywords: ${URL_CALLBACK_KEYWORDS:http://localhost:8080/v1/callback/keywords}
+
+  crawler:
+    ranking: ${URL_CRAWLER_RANKING:http://localhost:9030/v1/ranking/crawl}
+    place: ${URL_CRAWLER_PLACE:http://localhost:9040/v1/place/crawl}
+    keyword: ${URL_CRAWLER_KEYWORD:http://localhost:9050/v1/keyword/crawl}
 
 logging:
   level:
     org.springframework.web.servlet.resource: OFF
-
-app:
-  s3:
-    presign-expire-minutes: ${S3_PRESIGN_EXPIRE_MINUTES:10}
-    upload-prefix: ${S3_UPLOAD_PREFIX:images}

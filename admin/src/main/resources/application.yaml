@@ -1,0 +1,28 @@
+server:
+  port: ${SERVER_PORT:8000}
+
+spring:
+  application:
+    name: admin
+
+  datasource:
+    url: jdbc:postgresql://${DATABASE_HOST:localhost}:${DATABASE_PORT:5432}/${DATABASE_NAME:postgres}
+    username: ${DATABASE_USERNAME:devuser}
+    password: ${DATABASE_PASSWORD:devpass}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:validate}
+    open-in-view: ${SPRING_JPA_OPEN_IN_VIEW:false}
+
+  security:
+    user:
+      name: ${SPRING_SECURITY_USER_NAME:admin}
+      password: ${SPRING_SECURITY_USER_PASSWORD:admin}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
