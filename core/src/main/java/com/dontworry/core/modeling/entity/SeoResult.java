@@ -33,27 +33,25 @@ public class SeoResult {
     private String grade;
 
     @Column(nullable = false)
-    private Double keywordOptimization;
+    private Double placeCompleteness;
 
     @Column(nullable = false)
     private Double reviewQuality;
 
-    @Column(nullable = false)
-    private Double searchExposure;
-
-    @Column(nullable = false)
-    private Double competition;
+    @Column(nullable = false, columnDefinition = "text")
+    private String placeSummary;
 
     @Column(nullable = false, columnDefinition = "text")
     private String summary;
 
-    // JSON 배열 문자열로 저장
     @Column(nullable = false, columnDefinition = "text")
     private String seoFeedback;
 
-    // JSON 배열 문자열로 저장
     @Column(nullable = false, columnDefinition = "text")
     private String reviewFeedback;
+
+    @Column(nullable = false, columnDefinition = "text")
+    private String competitorFeedback;
 
     @CreatedDate
     @Column(nullable = false)
